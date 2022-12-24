@@ -34,7 +34,6 @@ jobs:
       - save_cache:
           paths: [backend/node_modules]
           key: backend-build
-
   test-frontend:
     docker:
       - image: circleci/node:13.8.0
@@ -62,21 +61,22 @@ jobs:
             cd backend
             npm i
             npm audit fix
-            npm run test  
-
+            npm run test       
   scan-frontend:
     docker:
       - image: circleci/node:13.8.0
     steps:
       - checkout
-      - restore_cache:
-          keys: [frontend-build]
+     # - restore_cache:
+          #keys: [frontend-build]
       - run:
           name: Scan front-end
           command: |
             cd frontend
             npm i
             npm audit --audit-level=critical --force
+      - store_artifacts:
+          path: /test       
                 
   scan-backend:
     docker:
@@ -90,8 +90,7 @@ jobs:
           command: |
             cd backend
             npm i
-            npm audit fix --audit-level=critical  
-
+            npm audit fix --audit-level=critical 
 workflows:
   default:
     jobs:
