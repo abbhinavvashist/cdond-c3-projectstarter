@@ -192,6 +192,55 @@ jobs:
           paths:
             - project/.circleci/ansible/inventory.txt
 
+  configure-infrastructure:
+    docker:
+      - image: python:3.7-alpine3.11
+
+    steps:
+      - checkout  
+      - run:
+          name: Install ssh and git
+          command: |
+            apk add --update openssh-client #Insatll ssh
+            apk add --update git #Insatll git
+      - add_ssh_keys:
+          fingerprints: ["11:f8:00:99:22:99:cb:d0:94:80:a0:1a:1f:55:17:19"]
+      - attach_workspace:
+          at: ~/
+      - run:
+          name: Install dependencies
+  # working_directory: ./.circleci/ansible
+          command: |
+            cat ~/project/.circleci/ansible/inventory.txt
+            apk add --update tar gzip ansible nodejs npm curl
+            pip install awscli
+      - run:
+          name: configure environment
+          command: |
+            echo ENVIRONMENT=production >> "backend/.env"
+            #echo NODE_ENV=production >> "backend/.env"
+            echo TYPEORM_CONNECTION=postgres >> "backend/.env"
+            echo TYPEORM_MIGRATIONS_DIR=./src/migrations >> "backend/.env"
+            echo TYPEORM_ENTITIES=./src/modules/domain/**/*.entity.ts >> "backend/.env"
+            echo TYPEORM_MIGRATIONS=./src/migrations/*.ts >> "backend/.env"
+            echo TYPEORM_HOST=$TYPEORM_HOST >> "backend/.env"
+            echo TYPEORM_PORT=$TYPEORM_PORT >> "backend/.env"
+            echo TYPEORM_USERNAME=$TYPEORM_USERNAME >> "backend/.env"
+            echo TYPEORM_PASSWORD=$TYPEORM_PASSWORD >> "backend/.env"
+            echo TYPEORM_DATABASE=$TYPEORM_DATABASE >> "backend/.env"
+            #echo ~/project/backend/.env
+            cat backend/.env
+            #cd ~/project/.circleci/ansible
+            #cat ~/project/.circleci/ansible/inventory.txt
+      - run:
+          name: configure server
+          command: |
+            export ANSIBLE_HOST_KEY_CHECKING=False
+            ansible-playbook -i ~/project/.circleci/ansible/inventory.txt .circleci/ansible/configure-server.yml
+            pwd
+            cat ~/project/backend/.env
+
+
 workflows:
   default:
     jobs:
