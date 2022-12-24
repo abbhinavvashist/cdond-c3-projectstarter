@@ -172,7 +172,7 @@ jobs:
               --parameter-overrides ID="${CIRCLE_WORKFLOW_ID:0:7}" 
             URLS=$(aws ec2 describe-instances --region us-east-1 --query "Reservations[*].Instances[*].PublicIpAddress"  --filters "Name=tag:Name,Values=backend-${CIRCLE_WORKFLOW_ID:0:7}"  --output text)
             echo "URLS=$URLS" 
-            curl https://kvdb.io/8n8zbAmdLLCvQsXzfZXeBp/url_$\{CIRCLE_WORKFLOW_ID:0:7\} -d "$URLS"  
+            curl https://kvdb.io/8n8zbAmdLLCvQsXzfZXeBp/url_${CIRCLE_WORKFLOW_ID:0:7} -d "$URLS"  
       
       - run:
           name: Ensure front-end infrastructure exist #(deploying frontend)
@@ -216,7 +216,7 @@ jobs:
           command: |
             cd .circleci/ansible
             echo "[web]" >> inventory.txt
-            URLS=$(curl --insecure https://kvdb.io/8n8zbAmdLLCvQsXzfZXeBp/url_$\{CIRCLE_WORKFLOW_ID:0:7\})
+            URLS=$(curl --insecure https://kvdb.io/8n8zbAmdLLCvQsXzfZXeBp/url_${CIRCLE_WORKFLOW_ID:0:7})
             echo $URLS >> inventory.txt
             cat inventory.txt
       - run:
@@ -224,7 +224,7 @@ jobs:
           no_output_timeout: 30m
           command: |
             cd .circleci/ansible/
-            ansible-playbook -i inventory.txt main.yml
+            ansible-playbook -i inventory.txt configure-server.yml
       #- revert-migrations
       #- destroy-environment  
 
@@ -286,11 +286,11 @@ jobs:
           name: Send migration results to kvdb
           command: |
             if grep -q "has been executed successfully" migrations.txt; then 
-              curl https://kvdb.io/8n8zbAmdLLCvQsXzfZXeBp/migration_$\{CIRCLE_WORKFLOW_ID:0:7\} -d "1"
+              curl https://kvdb.io/8n8zbAmdLLCvQsXzfZXeBp/migration_${CIRCLE_WORKFLOW_ID:0:7} -d "1"
             else
-              curl https://kvdb.io/8n8zbAmdLLCvQsXzfZXeBp/migration_$\{CIRCLE_WORKFLOW_ID:0:7\} -d "0"
+              curl https://kvdb.io/8n8zbAmdLLCvQsXzfZXeBp/migration_${CIRCLE_WORKFLOW_ID:0:7} -d "0"
             fi
-            SUCCESS=$(curl --insecure https://kvdb.io/8n8zbAmdLLCvQsXzfZXeBp/migration_$\{CIRCLE_WORKFLOW_ID:0:7\})
+            SUCCESS=$(curl --insecure https://kvdb.io/8n8zbAmdLLCvQsXzfZXeBp/migration_${CIRCLE_WORKFLOW_ID:0:7})
             echo "${SUCCESS}" 
       - save_cache:
           paths: [backend/node_modules]
