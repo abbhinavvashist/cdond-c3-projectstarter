@@ -204,7 +204,7 @@ jobs:
             apk add --update openssh-client #Insatll ssh
             apk add --update git #Insatll git
       - add_ssh_keys:
-          fingerprints: ["11:f8:00:99:22:99:cb:d0:94:80:a0:1a:1f:55:17:19"]
+          fingerprints: ["18:55:d6:04:43:15:b6:c1:e5:2d:6f:65:c2:97:c2:94"]
       - attach_workspace:
           at: ~/
       - run:
