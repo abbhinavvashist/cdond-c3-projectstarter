@@ -490,10 +490,6 @@ jobs:
               --stack-name InitialStack \
               --parameter-overrides WorkflowID="${CIRCLE_WORKFLOW_ID:0:7}" \
               --tags project=udapeople
-      - persist_to_workspace:
-          root: ~/
-          paths:
-            - project/OldWorkflowID.txt
       - destroy-environment:
           stack-name: udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7}
       - destroy-environment:
