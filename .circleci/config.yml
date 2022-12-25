@@ -188,9 +188,15 @@ jobs:
               --tags project=udapeople \
               --stack-name "udapeople-backend-${CIRCLE_WORKFLOW_ID:0:7}" \
               --parameter-overrides ID="${CIRCLE_WORKFLOW_ID:0:7}" 
-            URLS=$(aws ec2 describe-instances --region us-east-1 --query "Reservations[*].Instances[*].PublicIpAddress"  --filters "Name=tag:Name,Values=backend-${CIRCLE_WORKFLOW_ID:0:7}"  --output text)
-            echo "URLS=$URLS" 
-            curl https://kvdb.io/8n8zbAmdLLCvQsXzfZXeBp/url_${CIRCLE_WORKFLOW_ID:0:7} -d "$URLS"  
+
+      - run:
+          name: Save backend URL in kvdb
+          command: |
+            BACKEND_IP=$(aws ec2 describe-instances \
+              --query 'Reservations[*].Instances[*].PublicIpAddress' \
+              --filters "Name=tag:project,Values=udapeople-backend-${CIRCLE_WORKFLOW_ID:0:7}" \
+              --output text)
+            curl https://kvdb.io/8n8zbAmdLLCvQsXzfZXeBp/url_${CIRCLE_WORKFLOW_ID:0:7} -d "http://$BACKEND_IP:3030"  
       
       - run:
           name: Ensure front-end infrastructure exist #(deploying frontend)
@@ -232,14 +238,6 @@ jobs:
           command: |
             apk add --update tar gzip ansible nodejs npm curl
             pip install awscli
-      - run:
-          name: Setup inventory file
-          command: |
-            cd .circleci/ansible
-            echo "[web]" >> inventory.txt
-            URLS=$(curl --insecure https://kvdb.io/8n8zbAmdLLCvQsXzfZXeBp/url_${CIRCLE_WORKFLOW_ID:0:7})
-            echo $URLS >> inventory.txt
-            cat inventory.txt
       - run:
           name: Configure server
           no_output_timeout: 30m
@@ -331,20 +329,22 @@ jobs:
             sudo ./aws/install
       - run:
           name: Get backend url
+          working_directory: ./frontend
           command: |
-            export BACKEND_IP=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=backend-${CIRCLE_WORKFLOW_ID:0:7}" --query 'Reservations[*].Instances[*].PublicIpAddress' --output text)
-            export API_URL="http://${BACKEND_IP}:3030"
-            echo "API_URL = ${API_URL}"
-            echo API_URL="http://${BACKEND_IP}:3030" >> frontend/.env
-            cat frontend/.env
+            export API_URL=$(curl --insecure https://kvdb.io/8n8zbAmdLLCvQsXzfZXeBp/url_${CIRCLE_WORKFLOW_ID:0:7})
+            echo "${API_URL}"
+            npm run build
+    
       - run:
           name: Deploy frontend objects
+          working_directory: ./frontend
           command: |
-            cd frontend
-            npm install
-            npm run build
-            tar -czvf artifact-"${CIRCLE_WORKFLOW_ID:0:7}".tar.gz dist
-            aws s3 cp dist s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7} --recursive
+          command: |
+            aws s3 cp ./dist "s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7}" --recursive
+      - persist_to_workspace:
+          root: .
+          paths:
+            - frontend/dist
       - destroy-environment:
           stack-name: udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7}
       - destroy-environment:
@@ -433,27 +433,16 @@ jobs:
             apk add unzip tar gzip curl
       - run:
           name: Backend smoke test.
+          working_directory: ./backend
           command: |
-            BACKEND_IP=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=backend-${CIRCLE_WORKFLOW_ID:0:7}" --query 'Reservations[*].Instances[*].PublicIpAddress' --output text)
-            API_URL="http://${BACKEND_IP}:3030"
-            echo "${API_URL}"
-            if curl "${API_URL}/api/status" | grep "ok"
-            then
-              return 0
-            else
-              return 1
-            fi
+            export BACKEND_URL=$(curl --insecure https://kvdb.io/8n8zbAmdLLCvQsXzfZXeBp/url_${CIRCLE_WORKFLOW_ID:0:7})
+            curl "$BACKEND_URL/api/status"
       - run:
           name: Frontend smoke test.
+          working_directory: ./backend
           command: |
-            URL="http://udapeople-${CIRCLE_WORKFLOW_ID:0:7}.s3-website-us-east-1.amazonaws.com"
-            echo "${URL}" 
-            if curl -s ${URL} | grep "Welcome"
-            then
-              return 0
-            else
-              return 1
-            fi
+            URL="http://udapeople-${CIRCLE_WORKFLOW_ID:0:7}.s3-website.eu-central-1.amazonaws.com/index.html"
+            curl -s ${URL} | grep -q "Welcome"
       - destroy-environment:
           stack-name: udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7}
       - destroy-environment:
