@@ -379,14 +379,6 @@ jobs:
           command: |
             pip install awscli
       - run:
-          name: Setup inventory file
-          command: |
-            cd .circleci/ansible
-            echo "[web]" >> inventory.txt
-            URLS=$(curl --insecure https://kvdb.io/8n8zbAmdLLCvQsXzfZXeBp/url_${CIRCLE_WORKFLOW_ID:0:7})
-            echo $URLS >> inventory.txt
-            cat inventory.txt
-      - run:
           name: Deploy backend
           command: |
             cd backend
