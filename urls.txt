@@ -2,7 +2,7 @@ Public Url to GitHub repository (not private) [URL01]
 https://github.com/abbhinavvashist/cdond-c3-projectstarter
 
 Public URL for your S3 Bucket (aka, your green candidate front-end) [URL02]
-https://udapeople-ab216e1.s3.ap-south-1.amazonaws.com/index.html
+http://udapeople-e70abc9.s3-website-us-east-1.amazonaws.com
 
 Public URL for your CloudFront distribution (aka,your blue production front-end) [URL03]
 https://d3a6l8av8hr6l1.cloudfront.net/#/employees
