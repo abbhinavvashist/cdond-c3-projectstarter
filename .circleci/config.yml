@@ -287,6 +287,118 @@ jobs:
      #- revert-migrations:
      #    workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
 
+
+  deploy-frontend:
+    docker:
+      - image: circleci/node:13.8.0
+    steps:
+      - checkout
+      - restore_cache:
+          keys: [frontend-build]
+      - run:
+          name: Install tar,gzip
+          command: |
+            sudo apt-get update -y
+            sudo apt-get install -y tar
+      - run:
+          name: Install AWS CLI
+          command: |
+            sudo apt-get update
+            sudo apt-get install
+            sudo apt install ca-certificates
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip
+            sudo ./aws/install
+      - run:
+          name: Get backend url
+          command: |
+            export BACKEND_IP=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=backend-${CIRCLE_WORKFLOW_ID:0:7}" --query 'Reservations[*].Instances[*].PublicIpAddress' --output text)
+            export API_URL="http://${BACKEND_IP}:3030"
+            echo "API_URL = ${API_URL}"
+            echo API_URL="http://${BACKEND_IP}:3030" >> frontend/.env
+            cat frontend/.env
+      - run:
+          name: Deploy frontend objects
+          command: |
+            cd frontend
+            npm install
+            npm run build
+            tar -czvf artifact-"${CIRCLE_WORKFLOW_ID:0:7}".tar.gz dist
+            aws s3 cp dist s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7} --recursive
+     #- destroy-environment:
+     #    stack-name: udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7}
+     #- destroy-environment:
+     #    stack-name: udapeople-backend-${CIRCLE_WORKFLOW_ID:0:7}    
+     #- revert-migrations:
+     #    workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
+
+               
+  deploy-backend:
+    docker:
+      # Docker image here that supports Ansible
+      - image: python:3.7-alpine3.11
+    steps:
+      # Checkout code from git
+      - checkout
+      # Add ssh keys with fingerprint
+      - add_ssh_keys:
+          fingerprints: ["18:55:d6:04:43:15:b6:c1:e5:2d:6f:65:c2:97:c2:94"]
+      # attach workspace
+      - attach_workspace:
+          at: ~/
+      - run:
+          name: Install Nodejs Npm
+          command: |
+            apk add --update nodejs npm
+      - run:
+          name: Install dependencies
+          command: |
+            apk add unzip tar gzip curl
+            apk add --update ansible
+      - run:
+          name: Install AWS
+          command: |
+            pip install awscli
+      - run:
+          name: Setup inventory file
+          command: |
+            cd .circleci/ansible
+            echo "[web]" >> inventory.txt
+            URLS=$(curl --insecure https://kvdb.io/8n8zbAmdLLCvQsXzfZXeBp/url_${CIRCLE_WORKFLOW_ID:0:7})
+            echo $URLS >> inventory.txt
+            cat inventory.txt
+      - run:
+          name: Deploy backend
+          command: |
+            cd backend
+            echo ENVIRONMENT=production >> ".env"
+            echo NODE_ENV=production >> ".env"
+            echo TYPEORM_CONNECTION=postgres >> ".env"
+            echo TYPEORM_MIGRATIONS_DIR=./src/migrations >> ".env"
+            echo TYPEORM_ENTITIES=./src/modules/domain/**/*.entity.ts >> ".env"
+            echo TYPEORM_MIGRATIONS=./src/migrations/*.ts >> ".env"
+            echo TYPEORM_HOST=$TYPEORM_HOST >> ".env"
+            echo TYPEORM_PORT=$TYPEORM_PORT >> ".env"
+            echo TYPEORM_USERNAME=$TYPEORM_USERNAME >> ".env"
+            echo TYPEORM_PASSWORD=$TYPEORM_PASSWORD >> ".env"
+            echo TYPEORM_DATABASE=$TYPEORM_DATABASE >> ".env"
+            npm i
+            npm run build
+            cp package* ./dist
+            cd ..
+            tar -C backend -czvf artifact.tar.gz .
+            cd .circleci/ansible
+            echo "Contents  of the inventory.txt file is -------"
+            cat inventory.txt
+            ansible-playbook -i inventory.txt deploy-backend.yml
+     #- destroy-environment:
+     #    stack-name: udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7}
+     #- destroy-environment:
+     #    stack-name: udapeople-backend-${CIRCLE_WORKFLOW_ID:0:7}    
+     #- revert-migrations:
+     #    workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
+    
+
 workflows:
   default:
     jobs:
@@ -306,3 +418,7 @@ workflows:
           requires: [deploy-infrastructure]
       - run-migrations:
           requires: [configure-infrastructure]  
+      - deploy-frontend:
+          requires: [run-migrations]
+      - deploy-backend:
+          requires: [run-migrations]
