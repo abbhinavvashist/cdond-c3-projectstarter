@@ -659,7 +659,7 @@ jobs:
               fi
 
 workflows:
-  test-and-deploy:
+  default:
     jobs:
       - build-frontend:
           context: slack-context
