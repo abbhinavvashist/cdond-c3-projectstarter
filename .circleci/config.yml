@@ -64,10 +64,6 @@ jobs:
               npm install
               npm run build
               npm audit fix --audit-level=critical --force
-        - slack/notify:
-            channel: monitoring
-            event: fail
-            template: basic_fail_1
         - save_cache:
             key: frontend-build
             paths: [frontend/node_modules]
@@ -661,9 +657,8 @@ jobs:
 workflows:
   default:
     jobs:
-      - build-frontend:
-          context: slack-context
-      - build-backend:
+      - build-frontend
+      - build-backend
       - test-frontend:
           requires: [build-frontend]
       - test-backend:
@@ -671,19 +666,22 @@ workflows:
       - scan-backend:
           requires: [build-backend]
       - scan-frontend:
-          requires: [build-frontend]
+          requires: [build-frontend] 
       - deploy-infrastructure:
           requires: [test-frontend, test-backend, scan-frontend, scan-backend]
+          filters:
+            branches:
+              only: [master]
       - configure-infrastructure:
           requires: [deploy-infrastructure]
       - run-migrations:
-          requires: [configure-infrastructure]
+          requires: [configure-infrastructure]  
       - deploy-frontend:
           requires: [run-migrations]
       - deploy-backend:
           requires: [run-migrations]
       - smoke-test:
-          requires: [deploy-backend, deploy-frontend]
+          requires: [deploy-backend, deploy-frontend] 
       - cloudfront-update:
           requires: [smoke-test]
       - cleanup:
